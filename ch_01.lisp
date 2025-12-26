@@ -32,6 +32,11 @@
 	(t (+ (count-all-atoms (first exp) 1)
 	      (count-all-atoms (rest exp) 0)))))
 	
-  
-
-
+(defun count-anywhere (sub exp &optional (if-null 0))
+  "Count how many times sub occurs in exp. Handles searching for nil on non-tail position. (exercise 1.4)"
+  (cond ((equal sub exp) (if (null sub) if-null 1))
+	((atom exp) 0) ;; also picks empty exp
+	(t (+ (count-anywhere sub (first exp) 1)
+	      (count-anywhere sub (rest exp) 0)))))
+	
+	
