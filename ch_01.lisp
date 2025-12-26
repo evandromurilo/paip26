@@ -39,4 +39,10 @@
 	(t (+ (count-anywhere sub (first exp) 1)
 	      (count-anywhere sub (rest exp) 0)))))
 	
-	
+(defun dot-product (&rest numbers)
+  "Calculate the dot product of two sequences of numbers. The dot product is computed by multiplying each sequence and summing up the result. (dot-product '(10 20) '(3 4 5)) = (10 x 20) + (3 x 4 x 5). (exercise 1.5"
+  (if (null numbers)
+      0
+      (+ (apply #'* (first numbers))
+	 (apply #'dot-product (rest numbers)))))
+  
