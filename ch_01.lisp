@@ -17,4 +17,21 @@
       1
       (* x (power x (- n 1)))))
 
+(defun count-atoms (exp)
+  "Count the total number of atoms in exp. Nil counts as an atom, but the empty list has zero atoms. (exercise 1.3)"
+  (cond ((null exp) 0)
+	((null (first exp)) (+ 1 (count-atoms (rest exp))))
+	((listp (first exp)) (+ (count-atoms (first exp))
+				(count-atoms (rest exp))))
+	(t (+ 1 (count-atoms (rest exp))))))
+
+(defun count-all-atoms (exp &optional (if-null 1))
+  "(book solution) Return the total number of atoms in the expression, counting nil as an atom only in non-tail position."
+  (cond ((null exp) if-null)
+	((atom exp) 1)
+	(t (+ (count-all-atoms (first exp) 1)
+	      (count-all-atoms (rest exp) 0)))))
+	
+  
+
 
