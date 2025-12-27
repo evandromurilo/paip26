@@ -46,3 +46,6 @@
       (+ (apply #'* (first numbers))
 	 (apply #'sum-of-products (rest numbers)))))
   
+(defun dot-product (a b)
+  "Compute the dot product of two sequences of numbers, represented as lists. (exercise 1.5)"
+  (apply #'+ (mapcar #'* a b)))
