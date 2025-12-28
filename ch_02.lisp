@@ -127,3 +127,72 @@
 	     (loc -> franca italia alemanha)
 	     (oracao -> (verbo adv prep loc))))
 	   
+
+;; rule-based solution from book
+
+(defparameter *simple-grammar*
+  '((sentence -> (noun-phrase verb-phrase) noun-phrase)
+    (noun-phrase -> (Article Noun))
+    (verb-phrase - (Verb noun-phrase))
+    (Article -> the a)
+    (Noun -> man ball woman table)
+    (Verb -> hit took saw liked))
+  "A grammar for a trivial subset of English.")
+
+(defparameter *buggy-grammar*
+  '((noun -> verb noun))
+  "This grammar never generates 'noun.")
+
+(defvar *grammar* *simple-grammar*
+  "The grammar used by generate. Initially, this is *simple-grammar*, but we can switch to other grammars.")
+
+
+(defun rule-lhs (rule)
+  "The left-hand side of a rule."
+  (first rule))
+
+(defun rule-rhs (rule)
+  "The right-hand side of a rule."
+  (rest (rest rule)))
+
+(defun rewrites (category)
+  "Return a list of the possible rewrites for this category."
+  (rule-rhs (assoc category *grammar*)))
+
+(defun mappend (fun list)
+  (apply #'append (mapcar fun list)))
+
+(defun generate (phrase)
+  "Generate a random sentence or phrase."
+  (cond ((listp phrase)
+	 (mappend #'generate phrase))
+	((rewrites phrase)
+	 (generate (random-elt (rewrites phrase))))
+	(t (list phrase))))
+	
+;; exercises for section 2.3
+
+(defun generate (phrase)
+  "A version of generate that uses cond but avoids calling rewrites twice. (exercise 2.1)"
+  (let ((choices nil))
+    (cond ((listp phrase)
+	   (mappend #'generate phrase))
+	  ((setf choices (rewrites phrase))
+	   (generate (random-elt choices)))
+	  (t (list phrase)))))
+
+(defun generate (phrase)
+  "A version of generate that explicitly differentiates between terminal symbols (those with no rewrite rules) and nonterminal symbols. (exercise 2.2) (I find this approach really ugly)"
+  (cond ((listp phrase)
+	 (mappend #'generate phrase))
+	((terminalp phrase)
+	 (list phrase))
+	(t (generate (random-elt (rewrites phrase))))))
+
+(defun terminalp (term)
+  "Check if term has no rewrites in the grammar, and is therefore terminal."
+  (null (rewrites term)))
+		 
+	 
+  
+
