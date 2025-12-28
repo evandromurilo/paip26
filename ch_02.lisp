@@ -15,11 +15,11 @@
   "Make a composite generator, like '(article noun)."
   (lambda () (generate what)))
 
-(defvar *generators* (make-hash-table))
+(defvar *grammar* (make-hash-table))
 
 (defun add-generator (name generator)
-  "Add a new generator to the *generators* table."
-  (setf (gethash name *generators*) generator))
+  "Add a new generator to the *grammar* table."
+  (setf (gethash name *grammar*) generator))
 
 (add-generator 'verb (make-generator *verbs*))
 (add-generator 'noun (make-generator *nouns*))
@@ -59,13 +59,13 @@
   (cond ((null what) nil)
 	((atom what)
 	 (multiple-value-bind (what flag) (parse-gen-name what)
-	   (cond ((equal flag #\*) (zero-or-many (gethash what *generators*)))
-		 ((equal flag #\+) (one-or-many (gethash what *generators*)))
-		 (t (funcall (gethash what *generators*))))))
+	   (cond ((equal flag #\*) (zero-or-many (gethash what *grammar*)))
+		 ((equal flag #\+) (one-or-many (gethash what *grammar*)))
+		 (t (funcall (gethash what *grammar*))))))
 	(t (append (generate (first what))
 		   (generate (rest what))))))
 
-;; follow up with the book
+;; follow up with the book, straightforward way
 
 (defun sentence ()    (append (noun-phrase) (verb-phrase)))
 (defun noun-phrase () (append (Article) (Noun)))
@@ -83,3 +83,47 @@
   (elt choices (random (length choices))))
 			     
   
+;; adjust my generator to allow multiple grammars
+(defun make-grammar ()
+  (make-hash-table))
+
+(defparameter *simple-grammar* (make-grammar))
+(defvar *grammar* *simple-grammar*)
+
+(defun add-rule (grammar rule)
+  "Add a new rule to the grammar. The rule consists of a list like <name> -> words..., or <name> -> (rules...)."
+  (let ((name (first rule))
+	(rule (rest (rest rule))))
+    (setf (gethash name grammar)
+	  (if (listp (first rule))
+	      (make-composite-generator (first rule))
+	      (make-generator rule)))))
+
+(defun add-rules (grammar rules)
+  "Add a list of rules to the given grammar."
+  (if (null rules)
+      nil
+      (progn
+	(add-rule grammar (first rules))
+	(add-rules grammar (rest rules)))))
+
+(add-rules *simple-grammar*
+	   '((verb -> hit took saw liked killed massaged hugged shutted)
+	     (noun -> woman ball table man tree pencil gun bathtub)
+	     (article -> the a)
+	     (adj -> big little blue green huge funny smart crazy magnificent red)
+	     (prep -> to in by with on over under)
+	     (pp -> (prep noun-phrase))
+	     (noun-phrase -> (article adj* noun pp*))
+	     (verb-phrase -> (verb noun-phrase))
+	     (sentence -> (noun-phrase verb-phrase))))
+
+(defparameter *gramatica* (make-grammar))
+
+(add-rules *gramatica*
+	   '((verbo -> correr nadar andar amar)
+	     (adv -> sempre intensamente)
+	     (prep -> na)
+	     (loc -> franca italia alemanha)
+	     (oracao -> (verbo adv prep loc))))
+	   
