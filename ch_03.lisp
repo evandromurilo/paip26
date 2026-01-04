@@ -71,7 +71,9 @@
     res))
 
 (defun compress (the-set vocab)
-  "Compress the set into a bit sequence according to a reference set."
+  "Compress the set into a bit sequence according to a reference set. E.g.
+   > (compress '(a b d) #(a b c d e))
+   #*11010"
   (let ((bitseq (make-array (length vocab) :element-type 'bit)))
     (dotimes (index (length vocab))
       (if (member (aref vocab index) the-set)
