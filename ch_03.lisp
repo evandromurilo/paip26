@@ -34,3 +34,41 @@
 	       (princ (cdr exp))
 	       (princ ")"))))
       (princ exp)))
+
+(defun decompress (bitset vocab)
+  "Decompress a bit sequence according to a reference set. E.g.
+   > (decompress #*11001 #(a b c d e))
+   (a b e)"
+  (let ((res nil)
+	(len (length bitset)))
+    (dotimes (iteration len)
+      (let ((index (- len iteration 1)))
+	(when (= 1 (aref bitset index))
+	  (push (aref vocab index) res))))
+    res))
+
+(defun decompress (bitset vocab)
+  "Decompress implemented with a do loop"
+  (let ((res nil))
+    (do ((index (- (length bitset) 1) (decf index)))
+	((< index 0))
+      (when (= 1 (aref bitset index))
+	(push (aref vocab index) res)))
+    res))
+
+(defun reversetimes (count fun)
+  "Call function with argument n, where n goes from count-1 to 0."
+  (dotimes (index count)
+    (funcall fun (- count index 1))))
+
+(defun decompress (bitset vocab)
+  "Decompress implemented with reversetimes"
+  (let ((res nil))
+    (reversetimes (length bitset)
+		  #'(lambda (index)
+		      (when (= (aref bitset index) 1)
+			(push (aref vocab index) res))))
+    res))
+    
+		  
+  
