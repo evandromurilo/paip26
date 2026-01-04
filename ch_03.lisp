@@ -69,6 +69,14 @@
 		      (when (= (aref bitset index) 1)
 			(push (aref vocab index) res))))
     res))
-    
+
+(defun compress (the-set vocab)
+  "Compress the set into a bit sequence according to a reference set."
+  (let ((bitseq (make-array (length vocab) :element-type 'bit)))
+    (dotimes (index (length vocab))
+      (if (member (aref vocab index) the-set)
+	  (setf (aref bitseq index) 1)
+	  (setf (aref bitseq index) 0)))
+    bitseq))
 		  
   
