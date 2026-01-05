@@ -81,4 +81,33 @@
 	  (setf (aref bitseq index) 0)))
     bitseq))
 		  
-  
+
+;; here begins 20questions
+(defvar questions '("Is it an animal?"))
+(defvar correct-answers (make-hash-table))
+(defvar possible-guesses '(bee))
+
+(defun ask-question (&optional (question-base questions) (guess-base possible-guesses) (remaining-questions 20))
+  (cond ((= 0 (+ (length question-base)
+		 (length guess-base)))
+	 (princ "I give up. What is it? ")
+	 (read))
+	((= 0 remaining-questions)
+	 (princ "I lost. What is it? ")
+	 (read))
+	((> (length question-base) 0)
+	 (princ (car question-base))
+	 (princ " ")
+	 (read)
+	 (ask-question (cdr question-base)
+		       guess-base
+		       (- remaining-questions 1)))
+	((> (length guess-base) 0)
+	 (princ "Is it ")
+	 (princ (car guess-base))
+	 (princ "? ")
+	 (read)
+	 (ask-question question-base
+		       (cdr guess-base)
+		       (- remaining-questions 1)))))
+
