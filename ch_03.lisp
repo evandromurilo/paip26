@@ -83,23 +83,27 @@
 		  
 
 ;; here begins 20questions
-(defvar questions '("Is it an animal?"))
-(defvar correct-answers (make-hash-table))
+(defstruct question text answers)
+(defvar questions (list (make-question :text "Is it an animal?")))
 (defvar possible-guesses '(bee))
 
-(defun ask-question (&optional (question-base questions) (guess-base possible-guesses) (remaining-questions 20))
+(defun ask-question (&optional (yes-questions nil) (question-base questions) (guess-base possible-guesses) (remaining-questions 20))
   (cond ((= 0 (+ (length question-base)
 		 (length guess-base)))
 	 (princ "I give up. What is it? ")
-	 (read))
+	 (read)
+	 yes-questions)
 	((= 0 remaining-questions)
 	 (princ "I lost. What is it? ")
-	 (read))
-	((> (length question-base) 0)
-	 (princ (car question-base))
-	 (princ " ")
 	 (read)
-	 (ask-question (cdr question-base)
+	 yes-questions)
+	((> (length question-base) 0)
+	 (princ (question-text (car question-base)))
+	 (princ " ")
+	 (when (equal 'yes (read))
+	   (push (car question-base) yes-questions))
+	 (ask-question yes-questions
+		       (cdr question-base)
 		       guess-base
 		       (- remaining-questions 1)))
 	((> (length guess-base) 0)
@@ -110,7 +114,8 @@
 	     (princ "Nice! ")
 	     (progn
 	       (princ "Bummer! ")
-	       (ask-question question-base
+	       (ask-question yes-questions
+			     question-base
 			     (cdr guess-base)
 			     (- remaining-questions 1)))))))
 
