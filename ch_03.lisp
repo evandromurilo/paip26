@@ -106,8 +106,11 @@
 	 (princ "Is it ")
 	 (princ (car guess-base))
 	 (princ "? ")
-	 (read)
-	 (ask-question question-base
-		       (cdr guess-base)
-		       (- remaining-questions 1)))))
+	 (if (equal 'it (read))
+	     (princ "Nice! ")
+	     (progn
+	       (princ "Bummer! ")
+	       (ask-question question-base
+			     (cdr guess-base)
+			     (- remaining-questions 1)))))))
 
