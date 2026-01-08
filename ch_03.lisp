@@ -83,16 +83,17 @@
 		  
 
 ;; here begins 20questions
-(defstruct question text answers)
+(defstruct question text yeses noes)
 (defvar questions (list (make-question :text "Is it an animal?")))
 (defvar possible-guesses '(bee))
 
-(defun ask-question (&optional (yes-questions nil) (question-base questions) (guess-base possible-guesses) (remaining-questions 20))
+(defun ask-question (&optional (yes-questions nil) (no-questions nil) (question-base questions) (guess-base possible-guesses) (remaining-questions 20))
   (cond ((= 0 (+ (length question-base)
 		 (length guess-base)))
 	 (princ "I give up. What is it? ")
 	 (let ((answer (read)))
-	   (dolist (qst yes-questions) (push answer (question-answers qst))))
+	   (dolist (qst yes-questions) (push answer (question-yeses qst)))
+	   (dolist (qst no-questions) (push answer (question-noes qst))))
 	 yes-questions)
 	((= 0 remaining-questions)
 	 (princ "I lost. What is it? ")
@@ -101,9 +102,11 @@
 	((> (length question-base) 0)
 	 (princ (question-text (car question-base)))
 	 (princ " ")
-	 (when (equal 'yes (read))
-	   (push (car question-base) yes-questions))
+	 (case (read)
+	   (yes (push (car question-base) yes-questions))
+	   (no (push (car question-base) no-questions)))
 	 (ask-question yes-questions
+		       no-questions
 		       (cdr question-base)
 		       guess-base
 		       (- remaining-questions 1)))
@@ -116,6 +119,7 @@
 	     (progn
 	       (princ "Bummer! ")
 	       (ask-question yes-questions
+			     no-questions
 			     question-base
 			     (cdr guess-base)
 			     (- remaining-questions 1)))))))
