@@ -84,20 +84,25 @@
 
 ;; here begins 20questions
 (defstruct question text yeses noes)
-(defvar questions (list (make-question :text "Is it an animal?")))
-(defvar possible-guesses '(bee))
+(defvar *questions* (list (make-question :text "Is it an animal?")))
+(defvar *possible-guesses* '(bee))
 
-(defun ask-question (&optional (yes-questions nil) (no-questions nil) (question-base questions) (guess-base possible-guesses) (remaining-questions 20))
-  (cond ((= 0 (+ (length question-base)
-		 (length guess-base)))
+(defun ask-question (&optional (yes-questions nil) (no-questions nil) (question-base *questions*) (guess-base *possible-guesses*) (remaining-questions 20))
+  (cond ((or (= 0 (+ (length question-base)
+		    (length guess-base)))
+	     (= 0 remaining-questions))
 	 (princ "I give up. What is it? ")
 	 (let ((answer (read)))
-	   (dolist (qst yes-questions) (push answer (question-yeses qst)))
-	   (dolist (qst no-questions) (push answer (question-noes qst))))
-	 yes-questions)
-	((= 0 remaining-questions)
-	 (princ "I lost. What is it? ")
-	 (read)
+	   (princ "Help me improve with a yes-question. ")
+	   (let ((yes (make-question :text (read-line))))
+	     (push yes yes-questions)
+	     (push yes *questions*))
+	   (princ "Help me improve with a no-question. ")
+	   (let ((no (make-question :text (read-line))))
+	     (push no no-questions)
+	     (push no *questions*))
+	   (store-answer answer yes-questions no-questions))
+	   (princ "Thanks!")
 	 yes-questions)
 	((> (length question-base) 0)
 	 (princ (question-text (car question-base)))
@@ -115,7 +120,9 @@
 	 (princ (car guess-base))
 	 (princ "? ")
 	 (if (equal 'it (read))
-	     (princ "Nice! ")
+	     (progn
+	       (store-answer (car guess-base) yes-questions no-questions)
+	       (princ "Nice! "))
 	     (progn
 	       (princ "Bummer! ")
 	       (ask-question yes-questions
@@ -123,4 +130,8 @@
 			     question-base
 			     (cdr guess-base)
 			     (- remaining-questions 1)))))))
+
+(defun store-answer (answer yeses noes)
+  (dolist (qst yeses) (push answer (question-yeses qst)))
+  (dolist (qst noes) (push answer (question-noes qst))))
 
