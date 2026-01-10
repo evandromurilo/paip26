@@ -135,3 +135,13 @@
   (dolist (qst yeses) (push answer (question-yeses qst)))
   (dolist (qst noes) (push answer (question-noes qst))))
 
+;; end of chapter exercises
+
+(defun length2 (list)
+  "Version of length using the function reduce. (exercise 3.9)"
+  (reduce (lambda (x n) (+ x 1)) list :initial-value 0))
+
+(defun print-sentence (words)
+  "Take a list of words and print them as a sentence, with the first word capitalized and a period
+  after the last word. (exercise 3.12)"
+  (format t "~@(~{~a~^ ~}~)." words))
