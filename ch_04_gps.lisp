@@ -67,7 +67,7 @@
 	    (multiple-value-bind (is-fullfilled new-state added-path)
 		(gps state (operator-preconditions op) nil)
 	      (if is-fullfilled
-		  (values t (set-difference new-state (operator-delete-list op)) (append added-path (list (operator-action op))))
+		  (values t (union (operator-add-list op) (set-difference new-state (operator-delete-list op))) (append added-path (list (operator-action op))))
 		  (satisfy-goal state goal (rest operators))))
 	    (satisfy-goal state goal (rest operators))))))
 
