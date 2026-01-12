@@ -49,26 +49,27 @@
 		  :add-list '(at-home)
 		  :delete-list '(at-supermarket at-library at-bookstore))))
 
-;; todo backtracking
-(defun gps (state goal path)
-  (cond ((listp goal)
-	 (if (subsetp goal state) ;; the empty goal set will always the a subset of the state
-	     (values t state path)
-	     (let ((remaining-goals (set-difference goal state)))
-	       (multiple-value-bind (is-fulfilled new-state added-path) (gps state (first remaining-goals) nil)
-		 (if is-fulfilled
-		     (gps new-state (rest remaining-goals) (append path added-path))
-		     (values nil nil nil))))))
-	(t
-	 (let ((operator
-		 (find goal
-		       *operators*
-		       :test (lambda (thing op) (and (member thing (operator-add-list op)))))))
-	   (if operator ;; see if preconditions can be fullfilled
-	       (gps state (operator-preconditions operator) (list (operator-action operator)))
-	       (values nil nil nil))))))
+;; todo backtraking
+(defun gps (state goals path)
+  (let ((remaining-goals (set-difference goals state)))
+    (cond ((null remaining-goals) (values t state path))
+	  (t (multiple-value-bind (is-fullfilled new-state added-path)
+		 (satisfy-goal state (first remaining-goals) *operators*)
+	       (if is-fullfilled
+		   (gps new-state (rest remaining-goals) (append added-path path))
+		   (values nil nil nil)))))))
 
-						     
-	
-		       
-		       
+(defun satisfy-goal (state goal operators)
+  (if (null operators)
+      (values nil nil nil)
+      (let ((op (first operators)))
+	(if (member goal (operator-add-list op))
+	    (multiple-value-bind (is-fullfilled new-state added-path)
+		(gps state (operator-preconditions op) nil)
+	      (if is-fullfilled
+		  (values t (set-difference new-state (operator-delete-list op)) (append added-path (list (operator-action op))))
+		  (satisfy-goal state goal (rest operators))))
+	    (satisfy-goal state goal (rest operators))))))
+
+  
+	   
