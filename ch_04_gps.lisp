@@ -56,7 +56,7 @@
 	  (t (multiple-value-bind (is-fullfilled new-state added-path)
 		 (satisfy-goal state (first remaining-goals) *operators*)
 	       (if is-fullfilled
-		   (gps new-state (rest remaining-goals) (append added-path path))
+		   (gps new-state goals (append added-path path))
 		   (values nil nil nil)))))))
 
 (defun satisfy-goal (state goal operators)
