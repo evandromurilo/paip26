@@ -49,17 +49,18 @@
 		  :add-list '(at-home)
 		  :delete-list '(at-supermarket at-library at-bookstore))))
 
-;; todo backtraking
 (defun gps (state goals path)
+  "Find a path of actions what will lead to the satisfaction of all goals."
   (let ((remaining-goals (set-difference goals state)))
     (cond ((null remaining-goals) (values t state path))
 	  (t (multiple-value-bind (is-fullfilled new-state added-path)
 		 (satisfy-goal state (first remaining-goals) *operators*)
 	       (if is-fullfilled
-		   (gps new-state goals (append added-path path))
+		   (gps new-state goals (append path added-path))
 		   (values nil nil nil)))))))
 
 (defun satisfy-goal (state goal operators)
+  "Find a path of actions that will lead to the satisfaction of the goal."
   (if (null operators)
       (values nil nil nil)
       (let ((op (first operators)))
