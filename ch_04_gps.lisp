@@ -196,7 +196,12 @@
 
 (defun GPS (state goals &optional (*ops* *ops*))
   "General Problem Solver: from state, achieve goals using *ops*."
-  (remove-if #'atom (achieve-all (cons '(start) state) goals nil)))
+  (find-all-if #'action-p
+	       (achieve-all (cons '(start) state) goals nil)))
+
+(defun action-p (x)
+  "Is x something that is (start) or (executing ...)?"
+  (or (equal x '(start)) (executing-p x)))
 
 (defun achieve-all (state goals goal-stack)
   "Achieve each goal, and make sure they still hold at the end."
@@ -266,4 +271,37 @@
        :preconds '(has-bananas)
        :add-list '(empty-handed not-hungry)
        :del-list '(has-bananas hungry))))
-       
+
+(defun mappend (fun list)
+  (apply #'append (mapcar fun list)))
+
+(defun make-maze-ops (pair)
+  "Make maze ops in both directions"
+  (list (make-maze-op (first pair) (second pair))
+	(make-maze-op (second pair) (first pair))))
+
+(defun make-maze-op (here there)
+  "Make an operator to move between two places"
+  (op `(move from ,here to ,there)
+      :preconds `((at ,here))
+      :add-list `((at ,there))
+      :del-list `((at ,here))))
+
+(defparameter *maze-ops*
+  (mappend #'make-maze-ops
+	   '((1 2) (2 3) (3 4) (4 9) (9 14) (9 8) (8 7) (7 12) (12 13)
+	     (12 11) (11 6) (11 16) (16 17) (17 22) (22 21) (22 23)
+	     (23 18) (23 24) (24 19) (19 20) (20 25) (20 15) (15 10)
+	     (10 5))))
+
+(defun find-path (start end)
+  "Search a maze for a path from start to end."
+  (let ((results (GPS `((at ,start)) `((at ,end)))))
+    (unless (null results)
+      (cons start (mapcar #'destination
+			  (remove '(start) results
+				  :test #'equal))))))
+
+(defun destination (action)
+  "Find the Y in (executing (move from X to Y))"
+  (fifth (second action)))
