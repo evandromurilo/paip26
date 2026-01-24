@@ -219,7 +219,16 @@
   (cond ((member-equal goal state) state)
 	((member-equal goal goal-stack) nil)
 	(t (some #'(lambda (op) (apply-op state goal op goal-stack))
-		 (find-all goal *ops* :test #'appropriate-p)))))
+		 (appropriate-ops goal state)))))
+
+(defun appropriate-ops (goal state)
+  "Return a list of appropriate operators,
+   sorted by the number of unfulfilled preconditions."
+  (sort (copy-list (find-all goal *ops* :test #'appropriate-p)) #'<
+	:key #'(lambda (op)
+		 (count-if #'(lambda (precond)
+			       (not (member-equal precond state)))
+			   (op-preconds op)))))
 
 (defun member-equal (item list)
   (member item list :test #'equal))
@@ -275,6 +284,8 @@
 (defun mappend (fun list)
   (apply #'append (mapcar fun list)))
 
+;; gps applied to maze domain
+
 (defun make-maze-ops (pair)
   "Make maze ops in both directions"
   (list (make-maze-op (first pair) (second pair))
@@ -305,3 +316,30 @@
 (defun destination (action)
   "Find the Y in (executing (move from X to Y))"
   (fifth (second action)))
+
+;; gps applied to blocks world
+
+(defun make-block-ops (blocks)
+  (let ((ops nil))
+    (dolist (a blocks)
+      (dolist (b blocks)
+	(unless (equal a b)
+	  (dolist (c blocks)
+	    (unless (or (equal c a) (equal c b))
+	      (push (move-op a b c) ops))) ;; from one block to another
+	  (push (move-op a 'table b) ops) ;; from the table to a block
+	  (push (move-op a b 'table) ops))))
+    ops)) ;; from a block to the table
+
+(defun move-op (a b c)
+  "Make an operator to move A from B to C."
+  (op `(move ,a from ,b to ,c)
+      :preconds `((space on ,a) (space on ,c) (,a on ,b))
+      :add-list (move-ons a b c)
+      :del-list (move-ons a c b)))
+
+(defun move-ons (a b c)
+  (if (eq b 'table)
+      `((,a on ,c))
+      `((,a on ,c) (space on ,b))))
+	  
