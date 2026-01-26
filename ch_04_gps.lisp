@@ -343,3 +343,9 @@
       `((,a on ,c))
       `((,a on ,c) (space on ,b))))
 	  
+;; end-of-chapter exercies
+
+(defun dbg (id format-string &rest args)
+  "Dbg but implemented with a single call to format. (exercise 4.1)"
+  (when (member id *dbg-ids*)
+    (format *debug-io* "~&~?" format-string args)))
