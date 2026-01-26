@@ -349,3 +349,29 @@
   "Dbg but implemented with a single call to format. (exercise 4.1)"
   (when (member id *dbg-ids*)
     (format *debug-io* "~&~?" format-string args)))
+
+(defun map-in-context (function list &optional (before '()))
+  "Map through function with each element in list, along with the elements that came before and after it."
+  (if (null list)
+      nil
+      (cons (funcall function (first list) before (rest list))
+	    (map-in-context function
+			    (rest list)
+			    (append before (list (first list)))))))
+
+
+(defun permutations (list)
+  "Generate all permutations of the input list. (exercise 4.2)"
+  (if (and list (null (cdr list)))
+      (list list)
+      (apply #'append (map-in-context (lambda (element before after)
+			(mappend (lambda (permutation) (permutate element permutation))
+				 (permutations (append before after))))
+				      list))))
+
+(defun permutate (element list &optional (before '()))
+  "Permutate the element in all positions of list."
+  (if (null list)
+      (list (append before (list element)))
+      (cons (append before (list element) list)
+	    (permutate element (rest list) (append before (list (first list)))))))
