@@ -359,6 +359,10 @@
 			    (rest list)
 			    (append before (list (first list)))))))
 
+(defun tree (element children)
+  "Builds a tree represented as a cons cell."
+  (cons element children))
+
 (defun children (tree)
   "The children of a tree represented as a cons cell."
   (rest tree))
@@ -376,7 +380,7 @@
 
 (defun permutation-tree (element list)
   "Builds a permutation tree of list, with element as the root."
-  (cons element (map-in-context (lambda (element before after)
+  (tree element (map-in-context (lambda (element before after)
 				  (permutation-tree element (append before after)))
 				list)))
 (defun tree-paths (tree)
