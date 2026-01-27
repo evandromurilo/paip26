@@ -359,19 +359,37 @@
 			    (rest list)
 			    (append before (list (first list)))))))
 
+(defun children (tree)
+  "The children of a tree represented as a cons cell."
+  (rest tree))
+
+(defun element (tree)
+  "The element value of the root of a tree represented as a cons cell."
+  (first tree))
 
 (defun permutations (list)
-  "Generate all permutations of the input list. (exercise 4.2)"
-  (if (and list (null (cdr list)))
-      (list list)
-      (apply #'append (map-in-context (lambda (element before after)
-			(mappend (lambda (permutation) (permutate element permutation))
-				 (permutations (append before after))))
-				      list))))
+  "A list of all permutations of the elements of list. (exercise 4.2)"
+  (let ((trees (map-in-context (lambda (element before after)
+				 (permutation-tree element (append before after)))
+			       list)))
+    (forest-paths trees)))
 
-(defun permutate (element list &optional (before '()))
-  "Permutate the element in all positions of list."
-  (if (null list)
-      (list (append before (list element)))
-      (cons (append before (list element) list)
-	    (permutate element (rest list) (append before (list (first list)))))))
+(defun permutation-tree (element list)
+  "Builds a permutation tree of list, with element as the root."
+  (cons element (map-in-context (lambda (element before after)
+				  (permutation-tree element (append before after)))
+				list)))
+(defun tree-paths (tree)
+  "A list for each path through tree (from root to leaf)."
+  (if (null tree)
+      nil
+      (if (null (children tree))
+	  (list (list (element tree)))
+	  (mapcar (lambda (subtree) (cons (element tree) subtree)) (forest-paths (children tree))))))
+	  
+(defun forest-paths (trees)
+  "A list for each path through the forest (from root to leaf)."
+  (if (null trees)
+      nil
+      (append (tree-paths (first trees))
+	      (forest-paths (rest trees)))))
