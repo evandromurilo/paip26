@@ -214,7 +214,7 @@
 	current-state)))
 
 (defun achieve (state goal goal-stack)
-  "A goal is achieve if it already holds, or if there is an appropriate op for it that is applicable."
+  "A goal is achieved if it already holds, or if there is an appropriate op for it that is applicable."
   (dbg-indent :gps (length goal-stack) "Goal: ~a" goal)
   (cond ((member-equal goal state) state)
 	((member-equal goal goal-stack) nil)
@@ -397,3 +397,177 @@
       nil
       (append (tree-paths (first trees))
 	      (forest-paths (rest trees)))))
+
+(defparameter *dessert-ops*
+  (list
+   (op 'eating-ice-cream
+       :preconds '(has-ice-cream)
+       :add-list '(ate-ice-cream ate-dessert)
+       :del-list '(has-ice-cream))
+   (op 'eating-cake
+       :preconds '(has-cake)
+       :add-list '(ate-cake ate-dessert)
+       :del-list '(has-cake))
+   (op 'buying-cake
+       :preconds '(at-bakery has-money)
+       :add-list '(has-cake ice-cream-coupon)
+       :del-list '(has-money))
+   (op 'bakery-ice-cream-deal
+       :preconds '(at-bakery ice-cream-coupon ate-cake)
+       :add-list '(has-ice-cream)
+       :del-list '(ice-cream-coupon)))
+  "Exercise 4.3, with eat-dessert goal GPS will eat the cake and them still eat the ice cream.")
+
+
+;; new clos solver
+(defparameter *dessert-ops*
+  (list
+   (make-op :action 'eating-ice-cream
+       :preconds '(has-ice-cream)
+       :add-list '(ate-ice-cream ate-dessert)
+       :del-list '(has-ice-cream))
+   (make-op :action 'eating-cake
+       :preconds '(has-cake)
+       :add-list '(ate-cake ate-dessert)
+       :del-list '(has-cake))
+   (make-op :action 'buying-cake
+       :preconds '(at-bakery has-money)
+       :add-list '(has-cake ice-cream-coupon)
+       :del-list '(has-money))
+   (make-op :action 'bakery-ice-cream-deal
+       :preconds '(at-bakery ice-cream-coupon ate-cake)
+       :add-list '(has-ice-cream)
+       :del-list '(ice-cream-coupon))))
+
+
+(defstruct op "An operation"
+	   (action nil) (preconds nil) (add-list nil) (del-list nil))
+
+(defun appropriate-ops (goal state ops)
+  "Return a list of appropriate operators,
+   sorted by the number of unfulfilled preconditions."
+  (sort (copy-list (find-all goal ops :test #'appropriate-p)) #'<
+	:key #'(lambda (op)
+		 (count-if #'(lambda (precond)
+			       (not (member-equal precond state)))
+			   (op-preconds op)))))
+
+(defun member-equal (item list)
+  (member item list :test #'equal))
+
+(defun appropriate-p (goal op)
+  "An op is appropriate to a goal if it is in its add-list."
+  (member-equal goal (op-add-list op)))
+
+(defun find-all (item sequence &rest keyword-args &key (test #'eql) test-not &allow-other-keys)
+  (if test-not
+      (apply #'remove item sequence
+	     :test-not (complement test-not) keyword-args)
+      (apply #'remove item sequence
+	     :test (complement test) keyword-args)))
+
+(setf (symbol-function 'find-all-if) #'remove-if-not)
+
+(defclass solver ()
+  ((operations :accessor operations :initarg :operations)
+   (working-for :accessor working-for :initform nil :initarg :parent)
+   (workers :accessor workers :initform nil)
+   (initial-state :accessor initial-state :initarg :initial-state)
+   (working-state :accessor state :initarg :state)
+   (working-op :accessor working-op :initform nil)
+   (appropriate-ops :accessor options :initarg :ops)
+   (goal :accessor goal :initarg :goal)))
+
+(defun is-solved (solver)
+  "Check if the solver is solved with its own state."
+  (member (goal solver) (state solver)))
+
+(defun is-solved-with (solver state)
+  "Check if the solver is solved with the given state."
+  (member (goal solver) state))
+
+(defun highest-solved-with (reportee state)
+  "Go up the chain and see if anyone is solved by the given state. This is to short-circuit solutions."
+  (if (null reportee)
+      nil
+      (if (is-solved-with reportee state)
+	  (progn
+	    (setf (state reportee) state)
+	    (or (highest-solved-with (working-for reportee) state)
+		reportee))
+	  (highest-solved-with (working-for reportee) state))))
+
+(defun report-result (reportee)
+  "Report result up the chain, find next solver to work. The next solver is not necessarily done."
+  (let ((solver (working-for reportee)))
+    (if (null solver) ;; top of chain, final result
+	reportee
+	(if (not (is-solved reportee))
+	    (progn
+	      (setf (workers solver) nil)
+	      (work solver))
+	    (progn
+	      (setf (state solver) (state reportee))
+	      (or (highest-solved-with solver (state reportee)) (work solver)))))))
+
+(defun op-satisfied (solver)
+  "Check if the solver current operation is solved by its state."
+  (and (working-op solver)
+       (null (set-difference (op-preconds (working-op solver)) (state solver)))))
+
+(defun apply-op-to-solver (op solver)
+  "Apply given operation to solver state."
+  (setf (state solver)
+	(append (remove-if #'(lambda (x)
+			     (member-equal x (op-del-list op)))
+			 (state solver))
+		(op-add-list op))))
+
+(defun make-subsolver (solver goal)
+  "Make a new solver for a new goal based on the parent solver state."
+  (make-instance 'solver
+		 :goal goal
+		 :parent solver
+		 :state (copy-list (state solver))
+		 :initial-state (copy-list (state solver))
+		 :operations (operations solver)
+		 :ops (appropriate-ops goal (state solver) (operations solver))))
+
+(defun make-solver (goal state operations)
+  "Make a new root solver."
+  (make-instance 'solver
+		 :goal goal
+		 :parent nil
+		 :initial-state state
+		 :state (copy-list state)
+		 :operations operations
+		 :ops (appropriate-ops goal state operations)))
+
+(defun work (solver)
+  "Work on the solver goal."
+  (cond ((is-solved solver)
+	 (report-result solver))
+	((op-satisfied solver)
+	 (apply-op-to-solver (working-op solver) solver)
+	 (report-result solver))
+	((and (null (options solver)) (null (workers solver)))
+	 'failure)
+	((not (null (workers solver)))
+	 (work (pop (workers solver))))
+	(t (setf (state solver) (initial-state solver))
+	   (let* ((op (pop (options solver)))
+		  (missing-pieces (set-difference (op-preconds op) (state solver))))
+	     (if (null missing-pieces)
+		 (progn
+		   (apply-op-to-solver op solver)
+		   (report-result solver))
+		 (progn
+		   (setf (working-op solver) op)
+		   (setf (workers solver) (mapcar (lambda (goal)
+						    (make-subsolver solver goal))
+						  missing-pieces))
+		   (work solver)))))))
+	     
+      
+      
+      
