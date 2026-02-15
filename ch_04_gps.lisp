@@ -419,7 +419,7 @@
   "Exercise 4.3, with eat-dessert goal GPS will eat the cake and them still eat the ice cream.")
 
 
-;; new clos solver
+;; new clos solver, solves 4.3
 (defstruct op "An operation"
 	   (action nil) (preconds nil) (add-list nil) (del-list nil))
 
@@ -432,7 +432,11 @@
    (make-op :action 'eating-cake
        :preconds '(has-cake)
        :add-list '(ate-cake ate-dessert)
-       :del-list '(has-cake))
+	    :del-list '(has-cake))
+   (make-op :action 'work-for-money
+	    :preconds '(at-bakery)
+	    :add-list '(has-money)
+	    :del-list '())
    (make-op :action 'buying-cake
        :preconds '(at-bakery has-money)
        :add-list '(has-cake ice-cream-coupon)
@@ -546,7 +550,6 @@
 
 (defun apply-op-to-solver (op solver)
   "Apply given operation to solver state."
-  (format t "applying op ~a to ~a" (op-action op) solver)
   (push (op-action op) (path solver))
   (setf (state solver)
 	(append (remove-if #'(lambda (x)
@@ -600,7 +603,19 @@
 						    (make-subsolver solver goal))
 						  missing-pieces))
 		   (work solver)))))))
-	     
-      
+
+;; todo one goal currently can undo other goals
+(defun gps (goals state ops)
+  (if (null goals)
+      '()
+      (let ((solver (make-solver (first goals) state ops)))
+	(if (equal 'failure (work solver))
+	    'failure
+	    (let ((solution-for-rest (gps (rest goals) (state solver) ops)))
+	      (if (equal 'failure solution-for-rest)
+		  'failure
+		  (append (path solver) solution-for-rest)))))))
+		    
+	  
       
       
