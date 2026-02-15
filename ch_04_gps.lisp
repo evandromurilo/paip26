@@ -420,6 +420,9 @@
 
 
 ;; new clos solver
+(defstruct op "An operation"
+	   (action nil) (preconds nil) (add-list nil) (del-list nil))
+
 (defparameter *dessert-ops*
   (list
    (make-op :action 'eating-ice-cream
@@ -439,9 +442,6 @@
        :add-list '(has-ice-cream)
        :del-list '(ice-cream-coupon))))
 
-
-(defstruct op "An operation"
-	   (action nil) (preconds nil) (add-list nil) (del-list nil))
 
 (defun appropriate-ops (goal state ops)
   "Return a list of appropriate operators,
@@ -469,14 +469,35 @@
 (setf (symbol-function 'find-all-if) #'remove-if-not)
 
 (defclass solver ()
-  ((operations :accessor operations :initarg :operations)
-   (working-for :accessor working-for :initform nil :initarg :parent)
-   (workers :accessor workers :initform nil)
-   (initial-state :accessor initial-state :initarg :initial-state)
-   (working-state :accessor state :initarg :state)
-   (working-op :accessor working-op :initform nil)
-   (appropriate-ops :accessor options :initarg :ops)
-   (goal :accessor goal :initarg :goal)))
+  ((operations :accessor operations
+	       :initarg :operations
+	       :documentation "Available operations in the solver's world.")
+   (working-for :accessor working-for
+		:initform nil
+		:initarg :parent
+		:documentation "Who this solver is working for, ie the parent solver.")
+   (workers :accessor workers
+	    :initform nil
+	    :documentation "Active child workers, generated while working on its own goal.")
+   (initial-state :accessor initial-state
+		  :initarg :initial-state
+		  :documentation "Initial state of the solver, used to reset the state after a
+                                 failed branch.")
+   (working-state :accessor state
+		  :initarg :state
+		  :documentation "Active state of the solver, for the given batch of workers.")
+   (working-op :accessor working-op
+	       :initform nil
+	       :documentation "Which operation is being worked right now.")
+   (appropriate-ops :accessor options
+		    :initarg :ops
+		    :documentation "Which operations from the world will solve the solver goal.")
+   (path :accessor path
+	 :initform nil
+	 :documentation "The operations applied to solve the goal.")
+   (goal :accessor goal
+	 :initarg :goal
+	 :documentation "The worker goal.")))
 
 (defun is-solved (solver)
   "Check if the solver is solved with its own state."
@@ -503,7 +524,7 @@
     (if (null solver) ;; top of chain, final result
 	reportee
 	(if (not (is-solved reportee))
-	    (progn
+	    (progn ; this branch failed, reset parent solver
 	      (setf (workers solver) nil)
 	      (work solver))
 	    (progn
@@ -553,7 +574,9 @@
 	((and (null (options solver)) (null (workers solver)))
 	 'failure)
 	((not (null (workers solver)))
-	 (work (pop (workers solver))))
+	 (let ((next-worker (pop (workers solver))))
+	   (setf (state next-worker) (state solver))
+	   (work next-worker)))
 	(t (setf (state solver) (initial-state solver))
 	   (let* ((op (pop (options solver)))
 		  (missing-pieces (set-difference (op-preconds op) (state solver))))
