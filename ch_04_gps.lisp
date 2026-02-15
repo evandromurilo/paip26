@@ -442,7 +442,6 @@
        :add-list '(has-ice-cream)
        :del-list '(ice-cream-coupon))))
 
-
 (defun appropriate-ops (goal state ops)
   "Return a list of appropriate operators,
    sorted by the number of unfulfilled preconditions."
@@ -499,6 +498,10 @@
 	 :initarg :goal
 	 :documentation "The worker goal.")))
 
+(defmethod print-object ((object solver) stream)
+  (print-unreadable-object (object stream :identity t)
+    (format stream "~S ~a" (class-name (class-of object)) (goal object))))
+
 (defun is-solved (solver)
   "Check if the solver is solved with its own state."
   (member (goal solver) (state solver)))
@@ -507,16 +510,17 @@
   "Check if the solver is solved with the given state."
   (member (goal solver) state))
 
-(defun highest-solved-with (reportee state)
+(defun highest-solved-with (reportee state path)
   "Go up the chain and see if anyone is solved by the given state. This is to short-circuit solutions."
   (if (null reportee)
       nil
       (if (is-solved-with reportee state)
 	  (progn
 	    (setf (state reportee) state)
-	    (or (highest-solved-with (working-for reportee) state)
+	    (setf (path reportee) (append (path reportee) path))
+	    (or (highest-solved-with (working-for reportee) state path)
 		reportee))
-	  (highest-solved-with (working-for reportee) state))))
+	  (highest-solved-with (working-for reportee) state path))))
 
 (defun report-result (reportee)
   "Report result up the chain, find next solver to work. The next solver is not necessarily done."
@@ -526,10 +530,14 @@
 	(if (not (is-solved reportee))
 	    (progn ; this branch failed, reset parent solver
 	      (setf (workers solver) nil)
+	      (setf (path solver) nil)
 	      (work solver))
 	    (progn
 	      (setf (state solver) (state reportee))
-	      (or (highest-solved-with solver (state reportee)) (work solver)))))))
+	      (or (highest-solved-with solver (state reportee) (path reportee))
+		  (progn
+		    (setf (path solver) (append (path solver) (path reportee)))
+		    (work solver))))))))
 
 (defun op-satisfied (solver)
   "Check if the solver current operation is solved by its state."
@@ -538,6 +546,8 @@
 
 (defun apply-op-to-solver (op solver)
   "Apply given operation to solver state."
+  (format t "applying op ~a to ~a" (op-action op) solver)
+  (push (op-action op) (path solver))
   (setf (state solver)
 	(append (remove-if #'(lambda (x)
 			     (member-equal x (op-del-list op)))
