@@ -619,5 +619,58 @@
   
 		    
 	  
-      
+;; wip i think this solves 4.4, but not 4.3
+
+(defun appropriate-ops (goal state ops)
+  "Return a list of appropriate operators,
+   sorted by the number of unfulfilled preconditions."
+  (sort (copy-list (find-all goal ops :test #'appropriate-p)) #'<
+	:key #'(lambda (op)
+		 (count-if #'(lambda (precond)
+			       (not (member-equal precond state)))
+			   (op-preconds op)))))
+
+(defun apply-op (state op)
+  "Apply given operation to state."
+  (if (equal 'failure state)
+      'failure
+      (append (remove-if #'(lambda (x)
+			     (member-equal x (op-del-list op)))
+			 state)
+	      (op-add-list op))))
+
+(defmacro any (&body solvers)
+  (if (null solvers)
+      `'failure
+      `(let ((any-state ,(car solvers)))
+	 (if (equal 'failure any-state)
+	     (any ,@(cdr solvers))
+	     any-state))))
+
+(defun follow-up (main-goals all-ops state)
+  (if (equal 'failure state)
+      'failure
+      (solve-goals main-goals state all-ops)))
+    
+(defun solve-goals (main-goals initial-state all-ops)
+  (labels ((solve-goal (goal state ops)
+	     (cond  ((member goal state)
+		     state)
+		    ((null ops)
+		     'failure)
+		    (t (any (follow-up main-goals all-ops
+				       (apply-op (solve-goals (op-preconds (car ops)) state all-ops)
+					    (car ops)))
+			    (solve-goal goal state (cdr ops)))))))
+    (let ((goals (set-difference main-goals initial-state)))
+      (cond ((null goals)
+	     initial-state)
+	    (t (follow-up main-goals all-ops
+			  (solve-goal (car goals)
+				      initial-state
+				      (appropriate-ops (car goals) initial-state all-ops))))))))
+			  
+		    
+		 
+	     
       
