@@ -604,17 +604,19 @@
 						  missing-pieces))
 		   (work solver)))))))
 
-;; todo one goal currently can undo other goals
 (defun gps (goals state ops)
-  (if (null goals)
-      '()
-      (let ((solver (make-solver (first goals) state ops)))
+  (let ((path '()))
+    (dolist (goal goals)
+      (let ((solver (make-solver goal state ops)))
 	(if (equal 'failure (work solver))
-	    'failure
-	    (let ((solution-for-rest (gps (rest goals) (state solver) ops)))
-	      (if (equal 'failure solution-for-rest)
-		  'failure
-		  (append (path solver) solution-for-rest)))))))
+	    (return)
+	    (progn
+	      (setf state (state solver))
+	      (setf path (append path (path solver)))))))
+    (if (null (set-difference goals state))
+	path
+	'failure)))
+  
 		    
 	  
       
