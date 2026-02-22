@@ -758,45 +758,54 @@
 (defun make-opr (op &optional done)
   (list 'op op done))
 
-;; todo shortcuts (4.3)
+(defun prum-stack (state stack)
+  (labels ((rec (state stack acc)
+	     (if (null stack)
+		 acc
+		 (if (and (equal 'with (caar stack))
+			  (member (second (car stack)) state))
+		     acc
+		     (rec state (cdr stack) (cons (car stack) acc))))))
+    (rec state (nreverse stack) nil)))
+    
 ;; todo not getting locked (4.4)
 (defun solve-stack (state stack)
-  (cond ((null stack)
-	 state)
-	((has-duplicate stack :test #'equal-stack)
-	 state)
-	(t
-	 (apply
-	  #'solve-stack
-	  (multiple-value-bind (type val) (split-goal (car stack))
-	    (case type
-	      (all (list state
-			 (let ((goal (find (find-not-in (car val) state)
-					   (second val))))
-			   (if (null goal)
-			       (cdr stack)
-			       (list* (make-with goal (appropriate-ops goal state))
-				      (make-all (car val) (remove goal (second val)))
-				      (cdr stack))))))
-	      (with (list state
-			  (let ((goal (car val))
-				(ops (second val)))
-			    (if (or (member goal state) (null ops))
-				(cdr stack)
-				(list* (make-opr (car ops))
-				       (make-with goal (cdr ops))
-				       (cdr stack))))))
-	      (op (let ((op (car val))
-			(tried (second val)))
-		    (cond ((null (find-not-in (op-preconds op) state))
-			   (list (apply-op state op) (cdr stack)))
-			  (tried
-			   (cdr stack))
-			  (t (list state
-				   (list* (make-all (op-preconds op))
-					  (make-opr op t)
-					  (cdr stack)))))))))))))
-				 
-			
-	  
-			 
+  (let ((stack (prum-stack state stack)))
+    (cond ((null stack)
+	   state)
+	  ((has-duplicate stack :test #'equal-stack)
+	   state)
+	  (t (apply
+	      #'solve-stack
+	      (multiple-value-bind (type val) (split-goal (car stack))
+		(case type
+		  (all (list state
+			     (let ((goal (find (find-not-in (car val) state)
+					       (second val))))
+			       (if (null goal)
+				   (cdr stack)
+				   (list* (make-with goal (appropriate-ops goal state))
+					  (make-all (car val) (remove goal (second val)))
+					  (cdr stack))))))
+		  (with (list state
+			      (let ((goal (car val))
+				    (ops (second val)))
+				(if (or (member goal state) (null ops))
+				    (cdr stack)
+				    (list* (make-opr (car ops))
+					   (make-with goal (cdr ops))
+					   (cdr stack))))))
+		  (op (let ((op (car val))
+			    (tried (second val)))
+			(cond ((null (find-not-in (op-preconds op) state))
+			       (list (apply-op state op) (cdr stack)))
+			      (tried
+			       (cdr stack))
+			      (t (list state
+				       (list* (make-all (op-preconds op))
+					      (make-opr op t)
+					      (cdr stack))))))))))))))
+
+
+
+
