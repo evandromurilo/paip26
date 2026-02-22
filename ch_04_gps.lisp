@@ -620,6 +620,8 @@
 		    
 	  
 ;; wip i think this solves 4.4, but not 4.3
+;; i think i need to transform this into an iteractive process with a explicit stack
+;; because what i really need is to inspect the stack and short-circuit
 
 (defun appropriate-ops (goal state ops)
   "Return a list of appropriate operators,
@@ -672,5 +674,129 @@
 			  
 		    
 		 
-	     
-      
+;; a brand new gps
+(defstruct op "An operation"
+	   (action nil) (preconds nil) (add-list nil) (del-list nil))
+
+(defparameter *operations*
+  (list
+   (make-op :action 'eating-ice-cream
+       :preconds '(has-ice-cream)
+       :add-list '(ate-ice-cream ate-dessert)
+       :del-list '(has-ice-cream))
+   (make-op :action 'eating-cake
+       :preconds '(has-cake)
+       :add-list '(ate-cake ate-dessert)
+	    :del-list '(has-cake))
+   (make-op :action 'work-for-money
+	    :preconds '(at-bakery)
+	    :add-list '(has-money)
+	    :del-list '())
+   (make-op :action 'buying-cake
+       :preconds '(at-bakery has-money)
+       :add-list '(has-cake ice-cream-coupon)
+       :del-list '(has-money))
+   (make-op :action 'bakery-ice-cream-deal
+       :preconds '(at-bakery ice-cream-coupon ate-cake)
+       :add-list '(has-ice-cream)
+       :del-list '(ice-cream-coupon))))
+
+(defun appropriate-ops (goal state)
+  "Return a list of appropriate operators,
+   sorted by the number of unfulfilled preconditions."
+  (sort (copy-list (find-all goal *operations* :test #'appropriate-p)) #'<
+	:key #'(lambda (op)
+		 (count-if #'(lambda (precond)
+			       (not (member-equal precond state)))
+			   (op-preconds op)))))
+
+(defun apply-op (state op)
+  "Apply given operation to state."
+  (if (equal 'failure state)
+      'failure
+      (append (remove-if #'(lambda (x)
+			     (member-equal x (op-del-list op)))
+			 state)
+	      (op-add-list op))))
+
+
+(defun find-not-in (goals state)
+  (if (null goals)
+      nil
+      (let ((goal (car goals)))
+	(if (member goal state)
+	    (find-not-in (cdr goals) state)
+	    goal))))
+
+(defun split-goal (goal)
+  (values (car goal)
+	  (cdr goal)))
+
+(defun duplicate (obj lst &key (test #'eql))
+  (member obj (cdr (member obj lst :test test))
+	  :test test))
+
+(defun has-duplicate (lst &key (test #'eql))
+  (labels ((rec (a b)
+	     (cond ((null a)
+		    nil)
+		   ((duplicate (car a) b :test test)
+		    a)
+		   (t (rec (cdr a) b)))))
+    (rec lst lst)))
+
+(defun equal-stack (a b)
+  (and (equal (car a) (car b))
+       (equal (cadr a) (cadr b))))
+
+(defun make-all (goals &optional remainder-goals)
+  (list 'all goals (or remainder-goals goals)))
+
+(defun make-with (goal ops)
+  (list 'with goal ops))
+
+(defun make-opr (op &optional done)
+  (list 'op op done))
+
+;; todo shortcuts (4.3)
+;; todo not getting locked (4.4)
+(defun solve-stack (state stack)
+  (cond ((null stack)
+	 state)
+	((has-duplicate stack :test #'equal-stack)
+	 state)
+	(t
+	 (apply
+	  #'solve-stack
+	  (multiple-value-bind (type val) (split-goal (car stack))
+	    (case type
+	      (all (list state
+			 (let ((goal (find (find-not-in (car val) state)
+					   (second val))))
+			   (if (null goal)
+			       (cdr stack)
+			       (list* (make-with goal (appropriate-ops goal state))
+				      (make-all (car val) (remove goal (second val)))
+				      (cdr stack))))))
+	      (with (list state
+			  (let ((goal (car val))
+				(ops (second val)))
+			    (if (or (member goal state) (null ops))
+				(cdr stack)
+				(list* (make-opr (car ops))
+				       (make-with goal (cdr ops))
+				       (cdr stack))))))
+	      (op (let ((op (car val))
+			(tried (second val)))
+		    (cond ((null (find-not-in (op-preconds op) state))
+			   (list (apply-op state op) (cdr stack)))
+			  (tried
+			   (cdr stack))
+			  (t (list state
+				   (list* (make-all (op-preconds op))
+					  (make-opr op t)
+					  (cdr stack)))))))))))))
+				 
+			
+	  
+			 
