@@ -11,16 +11,16 @@
 	  (let ((prev (lookup pat bindings)))
 	    (if prev
 		(if (equal prev input)
-		    (values t nil)
+		    (values t bindings)
 		    (values nil nil))
-		(values t (list (make-binding pat input)))))
+		(values t (extend-bindings pat input bindings))))
 	  (if (atom pat)
 	      (if (equal pat input)
-		  (values t nil)
+		  (values t bindings)
 		  (values nil nil))
-	      (multiple-value-bind (success new-bindings) (pat-match (first pat) (first input) bindings)
+	      (multiple-value-bind (success bindings) (pat-match (first pat) (first input) bindings)
 		(if success
-		    (pat-match (rest pat) (rest input) (append new-bindings bindings))
+		    (pat-match (rest pat) (rest input) bindings)
 		    (values nil nil)))))))
 
 (defun variable-p (thing)
@@ -40,6 +40,11 @@
   "Get the value part (for var) from a binding list."
   (binding-val (get-binding var bindings)))
 
+(defun extend-bindings (var val bindings)
+  "Add a new (var . val) pair to the bindings."
+  (cons (make-binding var val) bindings))
+
 (defun make-binding (var val)
   "Make a new (var . value) pair for a binding list."
+  (format t "binding ~a to ~a~%" var val)
   (cons var val))
