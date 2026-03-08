@@ -118,8 +118,12 @@
     (setf *state* (union *state* (op-add-list op)))
     t))
 
-(defparameter *school-ops*
+(defparameter *operations*
   (list
+   (make-op :action 'taxi-son-to-school
+	    :preconds '(son-at-home have-money)
+	    :add-list '(son-at-school)
+	    :del-list '(son-at-home have-money))
    (make-op :action 'drive-son-to-school
 	    :preconds '(son-at-home car-works)
 	    :add-list '(son-at-school)
@@ -802,7 +806,7 @@
 			      (tried
 			       (cdr stack))
 			      (t (list state
-				       (list* (make-all (op-preconds op))
+				        (list* (make-all (op-preconds op))
 					      (make-opr op t)
 					      (cdr stack))))))))))))))
 
