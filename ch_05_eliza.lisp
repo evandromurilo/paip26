@@ -3,15 +3,23 @@
 
 (in-package :eliza)
 
-(defun pat-match (pat input)
-  (cond ((variable-p pat)
-	 t)
-	((and (atom pat) (atom input))
-	 (equal pat input))
-	(t
-	 (and (pat-match (car pat) (car input))
-	      (pat-match (cdr pat) (cdr input))))))
+(defun pat-match (pat input &optional (matches nil))
+  (if (and (null pat) (null input))
+      (values t matches)
+      (if (variable-p pat)
+	  (values t (list (make-match pat input)))
+	  (if (atom pat)
+	      (if (equal pat input)
+		  (values t nil)
+		  (values nil nil))
+	      (multiple-value-bind (success new-matches) (pat-match (first pat) (first input))
+		(if success
+		    (pat-match (rest pat) (rest input) (append new-matches matches))
+		    (values nil nil)))))))
 
 (defun variable-p (thing)
   (and (atom thing)
        (equal #\? (aref (string thing) 0))))
+
+(defun make-match (variable match)
+  (cons variable match))
